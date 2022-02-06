@@ -20,11 +20,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: title,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MainPage(title: title),
     );
   }
 }
@@ -45,87 +45,134 @@ class Player {
   static const O = 'O';
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+class _MainPageState extends State<MainPage> {
+  static final countMatrix = 3;
+  static final double size = 92;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  String lastMove = Player.none;
+  late List<List<String>> matrix;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
+  void initState() {
+    super.initState();
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+    setEmptyFields();
+  }
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void setEmptyFields() => setState(() => matrix = List.generate(
+    countMatrix,
+        (_) => List.generate(countMatrix, (_) => Player.none),
+  ));
+
+  Color getBackgroundColor() {
+    final thisMove = lastMove == Player.X ? Player.O : Player.X;
+
+    return getFieldColor(thisMove).withAlpha(150);
   }
 
   @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: getBackgroundColor(),
+    appBar: AppBar(
+      title: Text(widget.title),
+    ),
+    body: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: Utils.modelBuilder(matrix, (x, value) => buildRow(x)),
+    ),
+  );
+
+  Widget buildRow(int x) {
+    final values = matrix[x];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: Utils.modelBuilder(
+        values,
+            (y, value) => buildField(x, y),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+
+  Color getFieldColor(String value) {
+    switch (value) {
+      case Player.O:
+        return Colors.blue;
+      case Player.X:
+        return Colors.red;
+      default:
+        return Colors.white;
+    }
+  }
+
+  Widget buildField(int x, int y) {
+    final value = matrix[x][y];
+    final color = getFieldColor(value);
+
+    return Container(
+      margin: EdgeInsets.all(4),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          minimumSize: Size(size, size),
+          primary: color,
+        ),
+        child: Text(value, style: TextStyle(fontSize: 32)),
+        onPressed: () => selectField(value, x, y),
+      ),
+    );
+  }
+
+  void selectField(String value, int x, int y) {
+    if (value == Player.none) {
+      final newValue = lastMove == Player.X ? Player.O : Player.X;
+
+      setState(() {
+        lastMove = newValue;
+        matrix[x][y] = newValue;
+      });
+
+      if (isWinner(x, y)) {
+        showEndDialog('Player $newValue Won');
+      } else if (isEnd()) {
+        showEndDialog('Undecided Game');
+      }
+    }
+  }
+
+  bool isEnd() =>
+      matrix.every((values) => values.every((value) => value != Player.none));
+
+  /// Check out logic here: https://stackoverflow.com/a/1058804
+  bool isWinner(int x, int y) {
+    var col = 0, row = 0, diag = 0, rdiag = 0;
+    final player = matrix[x][y];
+    final n = countMatrix;
+
+    for (int i = 0; i < n; i++) {
+      if (matrix[x][i] == player) col++;
+      if (matrix[i][y] == player) row++;
+      if (matrix[i][i] == player) diag++;
+      if (matrix[i][n - i - 1] == player) rdiag++;
+    }
+
+    return row == n || col == n || diag == n || rdiag == n;
+  }
+
+  Future showEndDialog(String title) => showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text('Press to Restart the Game'),
+      actions: [
+        ElevatedButton(
+          onPressed: () {
+            setEmptyFields();
+            Navigator.of(context).pop();
+          },
+          child: Text('Restart'),
+        )
+      ],
+    ),
+  );
 }
