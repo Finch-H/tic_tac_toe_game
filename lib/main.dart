@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tic_tac_toe_game/utils.dart';
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([
@@ -21,10 +22,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: title,
+      color: Colors.black,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        backgroundColor: Colors.white,
       ),
       home: MainPage(title: title),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
